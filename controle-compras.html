@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Controle Semanal do Mercado</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Georgia, 'Iowan Old Style', serif;
+    background: #faf6ec;
+    color: #3d3225;
+    padding: 28px clamp(14px, 4vw, 32px) 60px;
+  }
+  button { font-family: inherit; cursor: pointer; }
+  input, select { font-family: inherit; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #d8cdb8; border-radius: 4px; }
+
+  .app-shell { max-width: 880px; margin: 0 auto; }
+
+  header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    flex-wrap: wrap; gap: 16px;
+    border-bottom: 2px solid #3d3225; padding-bottom: 16px; margin-bottom: 20px;
+  }
+  .eyebrow { font-family: 'Courier New', monospace; font-size: 11px; letter-spacing: 2px; color: #a08a5f; }
+  h1 { font-size: clamp(21px, 5vw, 26px); margin: 4px 0 0; font-weight: 700; }
+  .header-stats { display: flex; gap: 16px; }
+  .stat-box { text-align: right; }
+  .stat-label { font-size: 11px; color: #9a8a6e; font-family: 'Courier New', monospace; }
+  .stat-value { font-size: 20px; font-weight: 700; color: #5a7247; }
+
+  nav.tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  .tab {
+    background: transparent; border: 1px solid #d8cdb8; border-radius: 20px;
+    padding: 7px 14px; font-size: 13px; color: #6b5c4a;
+  }
+  .tab-active { background: #3d3225; color: #faf6ec; border-color: #3d3225; }
+
+  .loading, .empty { color: #9a8a6e; padding: 30px 0; text-align: center; font-style: italic; }
+
+  .error-banner {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    background: #f7e2da; color: #9a4a32; border: 1px solid #eac3b6; border-radius: 8px;
+    padding: 10px 14px; font-size: 13px; margin-bottom: 16px;
+  }
+  .error-banner button { background: none; border: 1px solid #eac3b6; border-radius: 14px; padding: 3px 10px; color: #9a4a32; font-size: 12px; }
+
+  .list { display: flex; flex-direction: column; gap: 14px; }
+  .week-card { background: #fff; border: 1px solid #ece3cf; border-radius: 10px; overflow: hidden; }
+  .week-head { display: flex; justify-content: space-between; padding: 12px 16px; background: #f2ecdb; border-bottom: 1px solid #ece3cf; }
+  .week-title { font-weight: 700; color: #3d3225; }
+  .week-total { font-weight: 700; color: #5a7247; }
+
+  .purchase-row { border-bottom: 1px solid #f2ecdb; }
+  .purchase-row:last-child { border-bottom: none; }
+  .purchase-head { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 10px 16px; cursor: pointer; }
+  .chevron { width: 16px; text-align: center; color: #6b5c4a; }
+  .purchase-store { flex: 1 1 140px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: #4a3f30; margin-left: 4px; }
+  .purchase-date { font-size: 12px; color: #9a8a6e; margin-right: 12px; }
+  .purchase-total { font-weight: 700; color: #5a7247; }
+  .trash-btn { background: none; border: none; color: #c07a5f; margin-left: 10px; padding: 4px; flex-shrink: 0; font-size: 14px; }
+
+  .items-table { padding: 0 16px 12px 40px; }
+  .item-row {
+    display: grid; grid-template-columns: 1fr auto auto auto; grid-template-areas: "name qty price total";
+    column-gap: 14px; row-gap: 2px; align-items: baseline; font-size: 13px; color: #4a3f30;
+    padding: 6px 0; border-bottom: 1px dashed #f0e9d8;
+  }
+  .item-row .col-name { grid-area: name; min-width: 0; }
+  .item-row .col-qty { grid-area: qty; color: #9a8a6e; text-align: right; white-space: nowrap; }
+  .item-row .col-price { grid-area: price; color: #9a8a6e; text-align: right; white-space: nowrap; }
+  .item-row .col-total { grid-area: total; text-align: right; font-weight: 600; white-space: nowrap; }
+
+  .chart-card, .price-card { background: #fff; border: 1px solid #ece3cf; border-radius: 10px; padding: 20px; }
+  .chart-title { font-weight: 700; margin-bottom: 18px; color: #3d3225; }
+  .bar-chart { display: flex; align-items: flex-end; gap: 14px; height: 220px; overflow-x: auto; padding-bottom: 4px; }
+  .bar-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 44px; flex-shrink: 0; height: 100%; }
+  .bar-value { font-size: 11px; color: #6b5c4a; margin-bottom: 4px; white-space: nowrap; }
+  .bar { width: 32px; background: #7a9163; border-radius: 6px 6px 0 0; }
+  .bar-label { font-size: 11px; color: #9a8a6e; margin-top: 6px; white-space: nowrap; }
+
+  .search-box { display: flex; align-items: center; gap: 8px; border: 1px solid #d8cdb8; border-radius: 20px; padding: 8px 14px; }
+  .search-box input { border: none; outline: none; flex: 1; font-size: 14px; font-family: inherit; background: transparent; }
+
+  .price-row {
+    display: grid; grid-template-columns: 70px 1fr auto auto auto; grid-template-areas: "date name store qty price";
+    column-gap: 12px; row-gap: 2px; align-items: baseline; font-size: 13px; padding: 6px 0; border-bottom: 1px dashed #f0e9d8;
+  }
+  .price-row .col-date { grid-area: date; color: #9a8a6e; }
+  .price-row .col-name { grid-area: name; min-width: 0; }
+  .price-row .col-store { grid-area: store; color: #9a8a6e; text-align: right; white-space: nowrap; }
+  .price-row .col-qty { grid-area: qty; text-align: right; white-space: nowrap; }
+  .price-row .col-price2 { grid-area: price; text-align: right; font-weight: 700; color: #5a7247; white-space: nowrap; }
+
+  .list-head-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  .clear-btn { background: none; border: 1px solid #d8cdb8; border-radius: 20px; padding: 6px 14px; font-size: 12px; color: #9a4a32; }
+  .save-status { font-size: 12px; color: #9a8a6e; display: inline-flex; align-items: center; gap: 4px; }
+  .retry-link { background: none; border: none; color: #9a4a32; text-decoration: underline; font-size: 12px; margin-left: 6px; padding: 0; }
+
+  .catalog-list { display: flex; flex-direction: column; }
+  .category-block { display: flex; flex-direction: column; margin-bottom: 14px; }
+  .category-title {
+    font-family: 'Courier New', monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+    color: #9a8a6e; border-bottom: 1px solid #ece3cf; padding-bottom: 4px; margin-bottom: 4px;
+  }
+  .list-check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #4a3f30; padding: 6px 0; cursor: pointer; }
+  .list-check-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: #7a9163; flex-shrink: 0; cursor: pointer; }
+
+  .custom-add-row { display: flex; gap: 8px; margin-top: 16px; }
+  .custom-add-row input { flex: 1; border: 1px solid #d8cdb8; border-radius: 6px; padding: 8px 10px; font-size: 13px; font-family: inherit; color: #3d3225; }
+  .add-small-btn { background: #7a9163; color: #fff; border: none; border-radius: 6px; padding: 8px 16px; font-size: 13px; font-weight: 600; }
+
+  @media (max-width: 620px) {
+    .header-stats { width: 100%; justify-content: space-between; }
+    .stat-box { text-align: left; }
+    .items-table { padding-left: 20px; }
+    .item-row { grid-template-columns: 1fr auto; grid-template-areas: "name total" "qty price"; }
+    .item-row .col-qty, .item-row .col-price { text-align: left; }
+    .price-row { grid-template-columns: 1fr auto; grid-template-areas: "name price" "date qty" "store store"; }
+    .price-row .col-date, .price-row .col-qty, .price-row .col-store { text-align: left; }
+  }
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div>
+        <div class="eyebrow">CADERNO DE COMPRAS</div>
+        <h1>Controle Semanal do Mercado</h1>
+      </div>
+      <div class="header-stats">
+        <div class="stat-box">
+          <div class="stat-label">Total acumulado</div>
+          <div class="stat-value" id="stat-total">R$ 0,00</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Média por semana</div>
+          <div class="stat-value" id="stat-avg">R$ 0,00</div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab" data-view="weeks">🧾 Compras por semana</button>
+      <button class="tab" data-view="grafico">📈 Evolução do gasto</button>
+      <button class="tab" data-view="precos">🔍 Histórico de preço</button>
+      <button class="tab" data-view="lista">🛒 Lista de compras</button>
+    </nav>
+
+    <div id="app"></div>
+  </div>
+
+<script>
+// ===================== CONFIG =====================
+const SUPABASE_URL = "https://zoqjnfyvljpyhymjhhik.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvcWpuZnl2bGpweWh5bWpoaGlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0NTI4NzIsImV4cCI6MjEwMDAyODg3Mn0.Z3JS42-f529CyH5uGToKXiz7ME8vmB3WeHg89Jhp6sk";
+
+// ===================== SEED (dados já conhecidos) =====================
+const SEED = [
+  {
+    id: "p1", date: "2026-07-12", store: "Extra / Pão de Açúcar (Cerro Corá)", desconto: 41.15,
+    items: [
+      { name: "Coca-Cola sem Açúcar 1,5L", qty: 1, unit: "un", unitPrice: 10.49 },
+      { name: "Cerveja Spaten 350ml", qty: 4, unit: "un", unitPrice: 4.89 },
+      { name: "Leite Longa Vida Parmalat 1L", qty: 1, unit: "un", unitPrice: 6.79 },
+      { name: "Macarrão c/ Ovos Barilla", qty: 1, unit: "un", unitPrice: 5.99 },
+      { name: "Vinho Verde Lapa 750ml", qty: 1, unit: "un", unitPrice: 59.90 },
+      { name: "Maçã Gala", qty: 1.845, unit: "kg", unitPrice: 19.90 },
+      { name: "Tomate Granel", qty: 1.305, unit: "kg", unitPrice: 15.99 },
+      { name: "Mandioquinha", qty: 0.810, unit: "kg", unitPrice: 13.79 },
+      { name: "Manjericão Kitano 7g", qty: 1, unit: "un", unitPrice: 3.39 },
+      { name: "Cebola Granel", qty: 0.745, unit: "kg", unitPrice: 9.99 },
+      { name: "Ketchup Zero Heinz 373g", qty: 1, unit: "un", unitPrice: 17.49 },
+      { name: "Manga Palmer", qty: 1.270, unit: "kg", unitPrice: 15.99 },
+      { name: "Brócolis 300g", qty: 1, unit: "un", unitPrice: 12.90 },
+      { name: "Banana Prata Granel", qty: 1.320, unit: "kg", unitPrice: 9.39 },
+      { name: "Batata Granel", qty: 1.830, unit: "kg", unitPrice: 11.19 },
+      { name: "Limão Taiti", qty: 0.505, unit: "kg", unitPrice: 9.99 },
+      { name: "Biscoito Trader Boys 300g", qty: 1, unit: "un", unitPrice: 9.99 },
+      { name: "Creme de Leite Mococa 200g", qty: 2, unit: "un", unitPrice: 3.69 },
+      { name: "Batata Palha 1kg", qty: 1, unit: "un", unitPrice: 32.90 },
+      { name: "Chandelle Chocolate", qty: 1, unit: "un", unitPrice: 15.99 },
+      { name: "Ana Maria Chocolate 35g", qty: 5, unit: "un", unitPrice: 3.39 },
+      { name: "Pão Hot Dog Pullman 520g", qty: 1, unit: "un", unitPrice: 17.99 },
+      { name: "Pão do Forno Integral", qty: 1, unit: "un", unitPrice: 15.49 },
+      { name: "Iogurte YoPro Chocolate 250ml", qty: 7, unit: "un", unitPrice: 9.99 },
+      { name: "Cenoura Granel", qty: 0.675, unit: "kg", unitPrice: 14.99 },
+      { name: "Iogurte Líquido Mor Zero 170g", qty: 6, unit: "un", unitPrice: 3.59 },
+      { name: "Toalha FAP c/2", qty: 1, unit: "un", unitPrice: 7.29 },
+      { name: "Cereal Sucrilhos 690g", qty: 1, unit: "un", unitPrice: 30.99 },
+      { name: "Sacola Verde", qty: 3, unit: "un", unitPrice: 0.11 },
+    ],
+    totalOverride: 479.08,
+  },
+  {
+    id: "p2", date: "2026-07-12", store: "Mercadão de Carnes e Mercearia Leopoldina", desconto: 0,
+    items: [
+      { name: "Patinho Bife", qty: 1.182, unit: "kg", unitPrice: 54.99 },
+      { name: "Filé de Frango", qty: 2.030, unit: "kg", unitPrice: 26.99 },
+      { name: "Sacola", qty: 1, unit: "un", unitPrice: 0.10 },
+    ],
+    totalOverride: 119.89,
+  },
+  {
+    id: "p3", date: "2026-07-14", store: "Pão de Açúcar (Vila Leopoldina)", desconto: 0,
+    items: [
+      { name: "Pão Italiano FP 320g", qty: 1, unit: "un", unitPrice: 14.49 },
+      { name: "Sacola Verde", qty: 1, unit: "un", unitPrice: 0.11 },
+    ],
+    totalOverride: 14.60,
+  },
+  {
+    id: "p4", date: "2026-07-17", store: "Fides Comércio de Alimentos (Vila Leopoldina)", desconto: 0,
+    items: [
+      { name: "Pizza Margherita", qty: 2, unit: "un", unitPrice: 39.90 },
+    ],
+    totalOverride: 79.80,
+  },
+];
+
+// PENDING_IMPORT: Claude adiciona novas compras aqui quando você manda uma nota nova.
+// Ao abrir o app, qualquer item novo aqui é importado automaticamente pro banco (uma vez só, por id).
+const PENDING_IMPORT = [
+  // Claude adiciona novos objetos de compra aqui, no mesmo formato do SEED.
+];
+
+// ===================== SUPABASE DATA LAYER =====================
+function sbHeaders(extra) {
+  return Object.assign({
+    "apikey": SUPABASE_KEY,
+    "Authorization": "Bearer " + SUPABASE_KEY,
+    "Content-Type": "application/json",
+  }, extra || {});
+}
+async function sbGet(path) {
+  const res = await fetch(SUPABASE_URL + "/rest/v1/" + path, { headers: sbHeaders() });
+  if (!res.ok) throw new Error("GET " + path + " -> " + res.status);
+  return res.json();
+}
+async function sbPost(path, body, prefer) {
+  const res = await fetch(SUPABASE_URL + "/rest/v1/" + path, {
+    method: "POST",
+    headers: sbHeaders({ Prefer: prefer || "resolution=merge-duplicates,return=representation" }),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let txt = "";
+    try { txt = await res.text(); } catch (e) {}
+    throw new Error("POST " + path + " -> " + res.status + " " + txt);
+  }
+  return res.json();
+}
+async function sbDelete(path) {
+  const res = await fetch(SUPABASE_URL + "/rest/v1/" + path, { method: "DELETE", headers: sbHeaders() });
+  if (!res.ok) throw new Error("DELETE " + path + " -> " + res.status);
+}
+
+function purchaseToRow(p) {
+  return { id: p.id, date: p.date, store: p.store, desconto: p.desconto || 0, items: p.items, total_override: (p.totalOverride === undefined ? null : p.totalOverride) };
+}
+function rowToPurchase(r) {
+  return { id: r.id, date: r.date, store: r.store, desconto: Number(r.desconto) || 0, items: r.items, totalOverride: r.total_override != null ? Number(r.total_override) : undefined };
+}
+async function fetchPurchases() {
+  const rows = await sbGet("purchases?select=*&order=date.asc");
+  return rows.map(rowToPurchase);
+}
+async function upsertPurchase(p) { await sbPost("purchases", [purchaseToRow(p)]); }
+async function deletePurchaseRow(id) { await sbDelete("purchases?id=eq." + encodeURIComponent(id)); }
+
+async function fetchShoppingList() {
+  const rows = await sbGet("shopping_list?select=*");
+  return rows.map(r => ({ name: r.name, done: !!r.done }));
+}
+async function upsertListItem(name, done) { await sbPost("shopping_list", [{ name: name, done: done }]); }
+async function deleteListItem(name) { await sbDelete("shopping_list?name=eq." + encodeURIComponent(name)); }
+async function clearShoppingListRows() { await sbDelete("shopping_list?name=not.is.null"); }
+
+// ===================== UTILS =====================
+function fmt(n) { return (n || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtDate(d) { const [y, m, day] = d.split("-"); return day + "/" + m + "/" + y; }
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function itemsGross(items) { return items.reduce((s, it) => s + it.qty * it.unitPrice, 0); }
+function purchaseTotal(p) {
+  if (typeof p.totalOverride === "number") return p.totalOverride;
+  return Math.max(0, itemsGross(p.items) - (p.desconto || 0));
+}
+function weekKey(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  const day = d.getDay();
+  const sunday = new Date(d);
+  sunday.setDate(d.getDate() - day);
+  return sunday.toISOString().slice(0, 10);
+}
+function weekRangeLabel(sundayStr) {
+  const start = new Date(sundayStr + "T00:00:00");
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return fmtDate(start.toISOString().slice(0, 10)) + " a " + fmtDate(end.toISOString().slice(0, 10));
+}
+function normalize(s) { return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
+
+const CATEGORY_ORDER = ["Hortifruti", "Açougue e Peixaria", "Padaria", "Laticínios e Frios", "Congelados", "Bebidas", "Mercearia", "Limpeza", "Higiene e Perfumaria", "Outros"];
+const CATEGORY_KEYWORDS = {
+  "Hortifruti": ["tomate", "cebola", "batata", "cenoura", "alface", "banana", "maca", "manga", "limao", "mandioquinha", "brocolis", "uva", "mamao", "abacate", "pepino", "pimentao", "couve", "espinafre", "laranja", "melancia", "abacaxi", "chuchu", "alho", "manjericao", "salsa", "cebolinha", "inhame", "beterraba", "morango", "kiwi", "rucula", "agriao", "coentro", "mandioca"],
+  "Açougue e Peixaria": ["carne", "bife", "frango", "patinho", "file de frango", "file de peixe", "peixe", "linguica", "costela", "picanha", "alcatra", "bacon", "salsicha", "hamburguer", "camarao", "salmao", "suino", "lombo", "coxa", "moida", "peito de frango", "tilapia", "acem", "cupim"],
+  "Padaria": ["pao", "baguete", "croissant", "bisnaguinha"],
+  "Laticínios e Frios": ["leite", "queijo", "iogurte", "manteiga", "margarina", "creme de leite", "requeijao", "presunto", "mussarela", "nata", "coalhada", "yopro", "achocolatado"],
+  "Congelados": ["sorvete", "lasanha", "nuggets", "pizza", "congelad"],
+  "Bebidas": ["cerveja", "refrigerante", "coca", "suco", "agua mineral", "vinho", "energetico", "whisky", "vodka", "cachaca", "espumante"],
+  "Mercearia": ["macarrao", "arroz", "feijao", "acucar", "sal ", "oleo", "farinha", "ketchup", "molho", "extrato de tomate", "cereal", "biscoito", "bolacha", "chocolate", "cafe", "mel", "azeite", "vinagre", "granola", "aveia", "fermento", "gelatina", "sucrilhos", "chandelle", "maionese", "mostarda", "tempero"],
+  "Limpeza": ["sacola", "detergente", "sabao em po", "amaciante", "desinfetante", "agua sanitaria", "esponja", "alvejante", "multiuso", "toalha"],
+  "Higiene e Perfumaria": ["papel higienico", "sabonete", "shampoo", "xampu", "creme dental", "escova de dente", "absorvente", "fralda", "desodorante"],
+};
+function classifyItem(name) {
+  const n = normalize(name);
+  for (const cat of CATEGORY_ORDER) {
+    const kws = CATEGORY_KEYWORDS[cat];
+    if (!kws) continue;
+    if (kws.some(k => n.includes(normalize(k)))) return cat;
+  }
+  return "Outros";
+}
+
+// ===================== STATE =====================
+let state = {
+  purchases: null,
+  shoppingList: [],
+  view: "weeks",
+  search: "",
+  expanded: {},
+  loadError: null,
+  listStatus: "idle",
+  listErrorMsg: "",
+};
+
+// ===================== INIT =====================
+async function init() {
+  state.loadError = null;
+  render();
+  try {
+    let purchases = await fetchPurchases();
+    if (purchases.length === 0) {
+      for (const p of SEED) await upsertPurchase(p);
+      purchases = await fetchPurchases();
+    }
+    const existingIds = new Set(purchases.map(p => p.id));
+    const newOnes = PENDING_IMPORT.filter(p => !existingIds.has(p.id));
+    if (newOnes.length) {
+      for (const p of newOnes) await upsertPurchase(p);
+      purchases = await fetchPurchases();
+    }
+    state.purchases = purchases;
+  } catch (e) {
+    console.error(e);
+    state.loadError = e.message;
+    state.purchases = [];
+  }
+  try {
+    state.shoppingList = await fetchShoppingList();
+  } catch (e) {
+    console.error(e);
+  }
+  render();
+}
+
+// ===================== DERIVED DATA =====================
+function getWeeksDesc() {
+  const map = {};
+  for (const p of state.purchases) {
+    const wk = weekKey(p.date);
+    if (!map[wk]) map[wk] = { wk: wk, purchases: [], total: 0 };
+    map[wk].purchases.push(p);
+    map[wk].total += purchaseTotal(p);
+  }
+  return Object.values(map).sort((a, b) => b.wk.localeCompare(a.wk));
+}
+function getWeeksAsc() { return [...getWeeksDesc()].sort((a, b) => a.wk.localeCompare(b.wk)); }
+function catalogNames() {
+  const seen = new Map();
+  for (const p of state.purchases) {
+    for (const it of p.items) {
+      const key = it.name.trim().toLowerCase();
+      if (!seen.has(key)) seen.set(key, it.name.trim());
+    }
+  }
+  return Array.from(seen.values()).sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+function groupNamesByCategory(names) {
+  const map = {};
+  for (const n of names) {
+    const cat = classifyItem(n);
+    if (!map[cat]) map[cat] = [];
+    map[cat].push(n);
+  }
+  return CATEGORY_ORDER.filter(c => map[c] && map[c].length).map(c => ({ category: c, items: map[c] }));
+}
+function groupListByCategory(items) {
+  const map = {};
+  for (const it of items) {
+    const cat = classifyItem(it.name);
+    if (!map[cat]) map[cat] = [];
+    map[cat].push(it);
+  }
+  return CATEGORY_ORDER.filter(c => map[c] && map[c].length).map(c => ({ category: c, items: map[c] }));
+}
+
+// ===================== RENDER =====================
+function renderHeaderStats() {
+  const grand = (state.purchases || []).reduce((s, p) => s + purchaseTotal(p), 0);
+  const weeks = getWeeksDesc();
+  const avg = weeks.length ? weeks.reduce((s, w) => s + w.total, 0) / weeks.length : 0;
+  document.getElementById("stat-total").textContent = "R$ " + fmt(grand);
+  document.getElementById("stat-avg").textContent = "R$ " + fmt(avg);
+}
+
+function render() {
+  document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("tab-active", btn.dataset.view === state.view));
+
+  const app = document.getElementById("app");
+
+  if (state.purchases === null) {
+    app.innerHTML = '<div class="loading">Carregando...</div>';
+    return;
+  }
+
+  renderHeaderStats();
+
+  let html = "";
+  if (state.loadError) {
+    html += '<div class="error-banner">Erro ao carregar dados: ' + escapeHtml(state.loadError) + ' <button data-action="reload">tentar de novo</button></div>';
+  }
+
+  if (state.view === "weeks") html += renderWeeksHtml();
+  else if (state.view === "grafico") html += renderChartHtml();
+  else if (state.view === "precos") html += renderPricesHtml();
+  else if (state.view === "lista") html += renderListHtml();
+
+  app.innerHTML = html;
+}
+
+function renderWeeksHtml() {
+  const weeks = getWeeksDesc();
+  if (weeks.length === 0) return '<div class="empty">Nenhuma compra registrada ainda.</div>';
+  return '<div class="list">' + weeks.map(w =>
+    '<div class="week-card">' +
+      '<div class="week-head"><div class="week-title">Semana de ' + weekRangeLabel(w.wk) + '</div><div class="week-total">R$ ' + fmt(w.total) + '</div></div>' +
+      w.purchases.map(renderPurchaseRow).join("") +
+    '</div>'
+  ).join("") + '</div>';
+}
+
+function renderPurchaseRow(p) {
+  const isOpen = !!state.expanded[p.id];
+  let itemsHtml = "";
+  if (isOpen) {
+    itemsHtml = '<div class="items-table">' +
+      p.items.map(it =>
+        '<div class="item-row">' +
+          '<span class="col-name">' + escapeHtml(it.name) + '</span>' +
+          '<span class="col-qty">' + it.qty + ' ' + it.unit + '</span>' +
+          '<span class="col-price">R$ ' + fmt(it.unitPrice) + '</span>' +
+          '<span class="col-total">R$ ' + fmt(it.qty * it.unitPrice) + '</span>' +
+        '</div>'
+      ).join("") +
+      (p.desconto > 0 ?
+        '<div class="item-row" style="color:#b0563f"><span class="col-name">Descontos aplicados</span><span class="col-qty"></span><span class="col-price"></span><span class="col-total">- R$ ' + fmt(p.desconto) + '</span></div>'
+        : "") +
+      '</div>';
+  }
+  return '<div class="purchase-row">' +
+    '<div class="purchase-head" data-action="toggle-expand" data-id="' + p.id + '">' +
+      '<span class="chevron">' + (isOpen ? "▾" : "▸") + '</span>' +
+      '<span class="purchase-store">' + escapeHtml(p.store) + '</span>' +
+      '<span class="purchase-date">' + fmtDate(p.date) + '</span>' +
+      '<span class="purchase-total">R$ ' + fmt(purchaseTotal(p)) + '</span>' +
+      '<button class="trash-btn" data-action="delete-purchase" data-id="' + p.id + '" title="Remover">✕</button>' +
+    '</div>' + itemsHtml +
+  '</div>';
+}
+
+function renderChartHtml() {
+  const weeks = getWeeksAsc();
+  if (weeks.length === 0) return '<div class="chart-card"><div class="empty">Nenhum dado ainda.</div></div>';
+  const max = Math.max(...weeks.map(w => w.total), 1);
+  const bars = weeks.map(w =>
+    '<div class="bar-col">' +
+      '<div class="bar-value">R$ ' + fmt(w.total) + '</div>' +
+      '<div class="bar" style="height:' + Math.max(6, (w.total / max) * 170) + 'px"></div>' +
+      '<div class="bar-label">' + fmtDate(w.wk) + '</div>' +
+    '</div>'
+  ).join("");
+  return '<div class="chart-card"><div class="chart-title">Gasto total por semana</div><div class="bar-chart">' + bars + '</div></div>';
+}
+
+function renderPricesHtml() {
+  return '<div class="price-card">' +
+    '<div class="search-box"><input id="search-input" type="text" value="' + escapeHtml(state.search) + '" placeholder="Buscar item (ex: tomate, cerveja, café...)" /></div>' +
+    '<div id="price-rows-container">' + renderPriceRowsInner() + '</div>' +
+  '</div>';
+}
+function renderPriceRowsInner() {
+  const q = state.search.trim().toLowerCase();
+  if (!q) return '<div class="empty">Digite o nome de um item para ver o histórico de preço.</div>';
+  let rows = [];
+  for (const p of state.purchases) {
+    for (const it of p.items) {
+      if (it.name.toLowerCase().includes(q)) {
+        rows.push({ date: p.date, store: p.store, name: it.name, qty: it.qty, unit: it.unit, unitPrice: it.unitPrice });
+      }
+    }
+  }
+  rows.sort((a, b) => b.date.localeCompare(a.date));
+  if (rows.length === 0) return '<div class="empty">Nenhum item encontrado.</div>';
+  return '<div style="margin-top:16px">' + rows.map(r =>
+    '<div class="price-row">' +
+      '<span class="col-date">' + fmtDate(r.date) + '</span>' +
+      '<span class="col-name">' + escapeHtml(r.name) + '</span>' +
+      '<span class="col-store">' + escapeHtml(r.store.split(" ")[0]) + '</span>' +
+      '<span class="col-qty">' + r.qty + ' ' + r.unit + '</span>' +
+      '<span class="col-price2">R$ ' + fmt(r.unitPrice) + '</span>' +
+    '</div>'
+  ).join("") + '</div>';
+}
+
+function saveStatusHtml() {
+  if (state.listStatus === "saving") return '<span class="save-status">salvando...</span>';
+  if (state.listStatus === "saved") return '<span class="save-status" style="color:#5a7247">✓ salvo</span>';
+  if (state.listStatus === "error") return '<span class="save-status" style="color:#9a4a32">Erro: ' + escapeHtml(state.listErrorMsg) + '<button class="retry-link" data-action="retry-list">tentar de novo</button></span>';
+  return "";
+}
+
+function renderListHtml() {
+  const listNamesSet = new Set(state.shoppingList.map(i => i.name.toLowerCase()));
+  const sortedList = [...state.shoppingList].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  const grouped = groupListByCategory(sortedList);
+  const catalog = catalogNames();
+  const catalogGrouped = groupNamesByCategory(catalog);
+  const pendentes = state.shoppingList.filter(i => !i.done).length;
+
+  return '<div class="price-card">' +
+    '<div class="list-head-row">' +
+      '<div style="font-weight:700;color:#3d3225">Sua lista para o mercado' + (state.shoppingList.length ? ' (' + pendentes + ' pendentes)' : '') + '</div>' +
+      '<div style="display:flex;align-items:center;gap:10px">' + saveStatusHtml() +
+        (state.shoppingList.length ? '<button class="clear-btn" data-action="clear-list">Limpar lista</button>' : '') +
+      '</div>' +
+    '</div>' +
+    (state.shoppingList.length === 0 ?
+      '<div class="empty">Nenhum item selecionado ainda. Marque itens no catálogo abaixo.</div>' :
+      '<div style="margin-bottom:26px">' + grouped.map(g =>
+        '<div class="category-block"><div class="category-title">' + g.category + '</div>' +
+        g.items.map(it =>
+          '<label class="list-check-row"><input type="checkbox" data-action="toggle-done" data-name="' + escapeHtml(it.name) + '" ' + (it.done ? "checked" : "") + ' />' +
+          '<span style="' + (it.done ? "text-decoration:line-through;color:#b3a98d" : "") + '">' + escapeHtml(it.name) + '</span></label>'
+        ).join("") + '</div>'
+      ).join("") + '</div>'
+    ) +
+    '<div style="border-top:1px solid #ece3cf;padding-top:16px">' +
+      '<div style="font-weight:700;margin-bottom:10px;color:#3d3225;font-size:14px">Itens de compras anteriores</div>' +
+      '<div class="catalog-list">' + catalogGrouped.map(g =>
+        '<div class="category-block"><div class="category-title">' + g.category + '</div>' +
+        g.items.map(name =>
+          '<label class="list-check-row"><input type="checkbox" data-action="toggle-catalog" data-name="' + escapeHtml(name) + '" ' + (listNamesSet.has(name.toLowerCase()) ? "checked" : "") + ' />' +
+          '<span>' + escapeHtml(name) + '</span></label>'
+        ).join("") + '</div>'
+      ).join("") + '</div>' +
+      '<div class="custom-add-row"><input id="custom-item-input" type="text" placeholder="Item novo (ex: fósforo)" /><button class="add-small-btn" data-action="add-custom">Adicionar</button></div>' +
+    '</div>' +
+  '</div>';
+}
+
+// ===================== ACTIONS =====================
+async function toggleListMembership(name, add) {
+  if (add) {
+    if (!state.shoppingList.some(i => i.name.toLowerCase() === name.toLowerCase())) {
+      state.shoppingList = state.shoppingList.concat([{ name: name, done: false }]);
+    }
+  } else {
+    state.shoppingList = state.shoppingList.filter(i => i.name.toLowerCase() !== name.toLowerCase());
+  }
+  state.listStatus = "saving";
+  render();
+  try {
+    if (add) await upsertListItem(name, false); else await deleteListItem(name);
+    state.listStatus = "saved";
+    render();
+    setTimeout(() => { if (state.listStatus === "saved") { state.listStatus = "idle"; render(); } }, 1200);
+  } catch (e) {
+    state.listStatus = "error"; state.listErrorMsg = e.message; render();
+  }
+}
+async function setItemDone(name, done) {
+  state.shoppingList = state.shoppingList.map(i => i.name === name ? Object.assign({}, i, { done: done }) : i);
+  state.listStatus = "saving";
+  render();
+  try {
+    await upsertListItem(name, done);
+    state.listStatus = "saved";
+    render();
+    setTimeout(() => { if (state.listStatus === "saved") { state.listStatus = "idle"; render(); } }, 1200);
+  } catch (e) {
+    state.listStatus = "error"; state.listErrorMsg = e.message; render();
+  }
+}
+
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => { state.view = btn.dataset.view; render(); });
+});
+
+document.getElementById("app").addEventListener("click", async (e) => {
+  const el = e.target.closest("[data-action]");
+  if (!el) return;
+  const action = el.dataset.action;
+
+  if (action === "toggle-expand") {
+    state.expanded[el.dataset.id] = !state.expanded[el.dataset.id];
+    render();
+  } else if (action === "delete-purchase") {
+    e.stopPropagation();
+    if (!confirm("Remover essa compra?")) return;
+    try {
+      await deletePurchaseRow(el.dataset.id);
+      state.purchases = state.purchases.filter(p => p.id !== el.dataset.id);
+      render();
+    } catch (err) { alert("Erro ao remover: " + err.message); }
+  } else if (action === "clear-list") {
+    if (!confirm("Limpar toda a lista?")) return;
+    state.listStatus = "saving"; render();
+    try {
+      await clearShoppingListRows();
+      state.shoppingList = [];
+      state.listStatus = "saved"; render();
+      setTimeout(() => { if (state.listStatus === "saved") { state.listStatus = "idle"; render(); } }, 1200);
+    } catch (err) { state.listStatus = "error"; state.listErrorMsg = err.message; render(); }
+  } else if (action === "retry-list") {
+    state.listStatus = "saving"; render();
+    try {
+      state.shoppingList = await fetchShoppingList();
+      state.listStatus = "saved"; render();
+    } catch (err) { state.listStatus = "error"; state.listErrorMsg = err.message; render(); }
+  } else if (action === "add-custom") {
+    const input = document.getElementById("custom-item-input");
+    const name = (input.value || "").trim();
+    if (!name) return;
+    input.value = "";
+    await toggleListMembership(name, true);
+  } else if (action === "reload") {
+    state.purchases = null; init();
+  }
+});
+
+document.getElementById("app").addEventListener("change", async (e) => {
+  if (e.target.dataset.action === "toggle-catalog") {
+    await toggleListMembership(e.target.dataset.name, e.target.checked);
+  } else if (e.target.dataset.action === "toggle-done") {
+    await setItemDone(e.target.dataset.name, e.target.checked);
+  }
+});
+
+document.getElementById("app").addEventListener("input", (e) => {
+  if (e.target.id === "search-input") {
+    state.search = e.target.value;
+    const container = document.getElementById("price-rows-container");
+    if (container) container.innerHTML = renderPriceRowsInner();
+  }
+});
+
+init();
+</script>
+</body>
+</html>
