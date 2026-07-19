@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Controle Semanal do Mercado</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F7F2E7;
+    --card: #FFFFFF;
+    --ink: #26221D;
+    --ink-soft: #4A4238;
+    --muted: #8C8072;
+    --rule: #E5DCC7;
+    --rule-strong: #CDBFA0;
+    --green: #3E6449;
+    --green-soft: #EAF0E7;
+    --stamp: #A24332;
+    --stamp-soft: #F6E4DD;
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: Georgia, 'Iowan Old Style', serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', 'Courier New', monospace;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    background: var(--paper);
+    color: var(--ink);
+    padding-bottom: 60px;
+  }
+  button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  input, select { font-family: inherit; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--rule-strong); border-radius: 4px; }
+
+  .app-shell { max-width: 720px; margin: 0 auto; }
+
+  /* ---------- Masthead (signature element) ---------- */
+  .masthead {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 26px clamp(18px, 5vw, 34px) 22px;
+  }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 2.5px;
+    color: rgba(247,242,231,0.55); text-transform: uppercase;
+  }
+  h1 {
+    font-family: var(--font-display); font-optical-sizing: auto;
+    font-size: clamp(24px, 6vw, 32px); font-weight: 600; letter-spacing: -0.01em;
+    margin: 6px 0 0; color: var(--paper);
+  }
+  .stats-strip { display: flex; gap: 26px; flex-wrap: wrap; margin-top: 18px; }
+  .stat-pair { display: flex; align-items: baseline; gap: 7px; white-space: nowrap; }
+  .stat-k { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.2px; color: rgba(247,242,231,0.5); }
+  .stat-v { font-family: var(--font-mono); font-size: 18px; font-weight: 600; color: var(--paper); }
+
+  .torn-edge {
+    height: 11px;
+    background: linear-gradient(-45deg, transparent 5.5px, var(--ink) 5.5px) 0 -5.5px / 11px 11px repeat-x;
+  }
+
+  /* ---------- Nav ---------- */
+  nav.tabs {
+    display: flex; gap: clamp(14px, 4vw, 26px); overflow-x: auto;
+    padding: 16px clamp(18px, 5vw, 34px) 0; margin-bottom: 22px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .tab {
+    background: none; border: none; padding: 0 0 12px;
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--muted); white-space: nowrap; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .tab-active { color: var(--ink); border-bottom-color: var(--green); font-weight: 600; }
+
+  .content-pad { padding: 0 clamp(18px, 5vw, 34px); }
+
+  .loading, .empty { color: var(--muted); padding: 34px 4px; text-align: center; font-style: italic; }
+
+  .error-banner {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--stamp-soft); color: var(--stamp); border: 1px solid #e6c3b6; border-radius: 8px;
+    padding: 11px 15px; font-size: 13px; margin-bottom: 18px;
+  }
+  .error-banner button { background: none; border: 1px solid var(--stamp); border-radius: 14px; padding: 3px 11px; color: var(--stamp); font-size: 11px; font-family: var(--font-mono); }
+
+  /* ---------- Weeks / purchases ---------- */
+  .list { display: flex; flex-direction: column; gap: 16px; }
+  .week-card { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(38,34,29,0.04), 0 6px 16px rgba(38,34,29,0.05); }
+  .week-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    padding: 13px 18px; background: var(--green-soft); border-bottom: 1px solid var(--rule);
+  }
+  .week-title { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.6px; color: var(--ink-soft); font-weight: 600; white-space: nowrap; }
+  .week-total { font-family: var(--font-mono); font-size: 15px; font-weight: 600; color: var(--green); white-space: nowrap; }
+
+  .purchase-row { border-bottom: 1px solid #F2ECDC; }
+  .purchase-row:last-child { border-bottom: none; }
+  .purchase-head { display: flex; align-items: center; gap: 8px; padding: 13px 18px 3px; cursor: pointer; }
+  .chevron { width: 12px; flex-shrink: 0; color: var(--muted); font-size: 11px; }
+  .purchase-store { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; color: var(--ink); }
+  .purchase-total { font-family: var(--font-mono); font-weight: 600; color: var(--green); white-space: nowrap; font-size: 14px; }
+  .trash-btn { background: none; border: none; color: var(--stamp); padding: 2px 0 2px 4px; flex-shrink: 0; font-size: 13px; opacity: 0.7; }
+  .purchase-meta { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.4px; color: var(--muted); padding: 0 18px 13px 20px; }
+
+  .items-table { padding: 2px 18px 14px 20px; }
+
+  .ledger-item { padding: 7px 0; border-bottom: 1px dashed var(--rule); }
+  .ledger-item:last-child { border-bottom: none; }
+  .ledger-line { display: flex; align-items: baseline; gap: 6px; }
+  .ledger-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: var(--ink-soft); }
+  .ledger-leader { flex: 1 1 auto; min-width: 8px; border-bottom: 1px dotted var(--rule-strong); margin-bottom: 4px; }
+  .ledger-value { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .ledger-sub { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); margin-top: 2px; letter-spacing: 0.2px; }
+
+  /* ---------- Chart ---------- */
+  .chart-card, .price-card { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 22px 18px; box-shadow: 0 1px 2px rgba(38,34,29,0.04), 0 6px 16px rgba(38,34,29,0.05); }
+  .chart-title { font-family: var(--font-mono); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 22px; }
+  .bar-chart { display: flex; align-items: flex-end; gap: clamp(10px, 3vw, 18px); height: 210px; overflow-x: auto; padding-bottom: 4px; }
+  .bar-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 42px; flex-shrink: 0; height: 100%; }
+  .bar-value { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-soft); margin-bottom: 6px; white-space: nowrap; }
+  .bar { width: 28px; background: var(--green); border-radius: 3px 3px 0 0; }
+  .bar-label { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 8px; white-space: nowrap; }
+
+  /* ---------- Search / price history ---------- */
+  .search-box { display: flex; align-items: center; gap: 10px; border: 1px solid var(--rule-strong); border-radius: 8px; padding: 10px 14px; background: var(--paper); }
+  .search-box input { border: none; outline: none; flex: 1; font-size: 14px; font-family: var(--font-body); background: transparent; color: var(--ink); }
+  .search-box input::placeholder { color: var(--muted); }
+
+  /* ---------- Shopping list ---------- */
+  .list-head-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .list-head-title { font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--ink); }
+  .clear-btn { background: none; border: 1px solid var(--rule-strong); border-radius: 20px; padding: 6px 14px; font-size: 11px; font-family: var(--font-mono); color: var(--stamp); }
+  .save-status { font-size: 11px; font-family: var(--font-mono); color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
+  .retry-link { background: none; border: none; color: var(--stamp); text-decoration: underline; font-size: 11px; font-family: var(--font-mono); margin-left: 6px; padding: 0; }
+
+  .catalog-list { display: flex; flex-direction: column; }
+  .category-block { display: flex; flex-direction: column; margin-bottom: 16px; }
+  .category-title {
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase;
+    color: var(--muted); border-bottom: 1px solid var(--rule); padding-bottom: 5px; margin-bottom: 3px;
+  }
+  .predicted-total-row {
+    display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px;
+    background: var(--green-soft); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 11px 15px; margin-bottom: 18px;
+  }
+  .predicted-total-k { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.5px; color: var(--ink-soft); }
+  .predicted-total-v { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--green); white-space: nowrap; }
+  .predicted-note { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); margin: -10px 0 18px; }
+
+  .list-check-row { display: flex; align-items: baseline; gap: 10px; font-size: 14px; color: var(--ink-soft); padding: 7px 0; cursor: pointer; }
+  .list-check-row input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--green); flex-shrink: 0; cursor: pointer; align-self: center; }
+  .list-item-price { font-family: var(--font-mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+  .custom-add-row { display: flex; gap: 8px; margin-top: 18px; }
+  .custom-add-row input { flex: 1; border: 1px solid var(--rule-strong); border-radius: 8px; padding: 9px 12px; font-size: 13px; font-family: var(--font-body); color: var(--ink); background: var(--paper); }
+  .add-small-btn { background: var(--green); color: #fff; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-family: var(--font-mono); font-weight: 600; }
+
+  @media (max-width: 480px) {
+    .stats-strip { gap: 18px; }
+    .stat-v { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="masthead">
+      <div class="eyebrow">Caderno de Compras</div>
+      <h1>Controle Semanal do Mercado</h1>
+      <div class="stats-strip">
+        <span class="stat-pair"><span class="stat-k">TOTAL</span><span class="stat-v" id="stat-total">R$ 0,00</span></span>
+        <span class="stat-pair"><span class="stat-k">MÉDIA / SEMANA</span><span class="stat-v" id="stat-avg">R$ 0,00</span></span>
+      </div>
+    </div>
+    <div class="torn-edge"></div>
+
+    <nav class="tabs">
+      <button class="tab" data-view="weeks">Compras</button>
+      <button class="tab" data-view="grafico">Evolução</button>
+      <button class="tab" data-view="precos">Preços</button>
+      <button class="tab" data-view="lista">Lista</button>
+    </nav>
+
+    <div class="content-pad"><div id="app"></div></div>
+  </div>
+
+<script>
+// ===================== CONFIG =====================
+const SUPABASE_URL = "https://zoqjnfyvljpyhymjhhik.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvcWpuZnl2bGpweWh5bWpoaGlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0NTI4NzIsImV4cCI6MjEwMDAyODg3Mn0.Z3JS42-f529CyH5uGToKXiz7ME8vmB3WeHg89Jhp6sk";
+
+// ===================== SEED (dados já conhecidos) =====================
+const SEED = [
+  {
+    id: "p1", date: "2026-07-12", store: "Extra / Pão de Açúcar (Cerro Corá)", desconto: 41.15,
+    items: [
+      { name: "Coca-Cola sem Açúcar 1,5L", qty: 1, unit: "un", unitPrice: 10.49 },
+      { name: "Cerveja Spaten 350ml", qty: 4, unit: "un", unitPrice: 4.89 },
+      { name: "Leite Longa Vida Parmalat 1L", qty: 1, unit: "un", unitPrice: 6.79 },
+      { name: "Macarrão c/ Ovos Barilla", qty: 1, unit: "un", unitPrice: 5.99 },
+      { name: "Vinho Verde Lapa 750ml", qty: 1, unit: "un", unitPrice: 59.90 },
+      { name: "Maçã Gala", qty: 1.845, unit: "kg", unitPrice: 19.90 },
+      { name: "Tomate Granel", qty: 1.305, unit: "kg", unitPrice: 15.99 },
+      { name: "Mandioquinha", qty: 0.810, unit: "kg", unitPrice: 13.79 },
+      { name: "Manjericão Kitano 7g", qty: 1, unit: "un", unitPrice: 3.39 },
+      { name: "Cebola Granel", qty: 0.745, unit: "kg", unitPrice: 9.99 },
+      { name: "Ketchup Zero Heinz 373g", qty: 1, unit: "un", unitPrice: 17.49 },
+      { name: "Manga Palmer", qty: 1.270, unit: "kg", unitPrice: 15.99 },
+      { name: "Brócolis 300g", qty: 1, unit: "un", unitPrice: 12.90 },
+      { name: "Banana Prata Granel", qty: 1.320, unit: "kg", unitPrice: 9.39 },
+      { name: "Batata Granel", qty: 1.830, unit: "kg", unitPrice: 11.19 },
+      { name: "Limão Taiti", qty: 0.505, unit: "kg", unitPrice: 9.99 },
+      { name: "Biscoito Trader Boys 300g", qty: 1, unit: "un", unitPrice: 9.99 },
+      { name: "Creme de Leite Mococa 200g", qty: 2, unit: "un", unitPrice: 3.69 },
+      { name: "Batata Palha 1kg", qty: 1, unit: "un", unitPrice: 32.90 },
+      { name: "Chandelle Chocolate", qty: 1, unit: "un", unitPrice: 15.99 },
+      { name: "Ana Maria Chocolate 35g", qty: 5, unit: "un", unitPrice: 3.39 },
+      { name: "Pão Hot Dog Pullman 520g", qty: 1, unit: "un", unitPrice: 17.99 },
+      { name: "Pão do Forno Integral", qty: 1, unit: "un", unitPrice: 15.49 },
+      { name: "Iogurte YoPro Chocolate 250ml", qty: 7, unit: "un", unitPrice: 9.99 },
+      { name: "Cenoura Granel", qty: 0.675, unit: "kg", unitPrice: 14.99 },
+      { name: "Iogurte Líquido Mor Zero 170g", qty: 6, unit: "un", unitPrice: 3.59 },
+      { name: "Toalha FAP c/2", qty: 1, unit: "un", unitPrice: 7.29 },
+      { name: "Cereal Sucrilhos 690g", qty: 1, unit: "un", unitPrice: 30.99 },
+      { name: "Sacola Verde", qty: 3, unit: "un", unitPrice: 0.11 },
+    ],
+    totalOverride: 479.08,
+  },
+  {
+    id: "p2", date: "2026-07-12", store: "Mercadão de Carnes e Mercearia Leopoldina", desconto: 0,
+    items: [
+      { name: "Patinho Bife", qty: 1.182, unit: "kg", unitPrice: 54.99 },
+      { name: "Filé de Frango", qty: 2.030, unit: "kg", unitPrice: 26.99 },
+      { name: "Sacola", qty: 1, unit: "un", unitPrice: 0.10 },
+    ],
+    totalOverride: 119.89,
+  },
+  {
+    id: "p3", date: "2026-07-14", store: "Pão de Açúcar (Vila Leopoldina)", desconto: 0,
+    items: [
+      { name: "Pão Italiano FP 320g", qty: 1, unit: "un", unitPrice: 14.49 },
+      { name: "Sacola Verde", qty: 1, unit: "un", unitPrice: 0.11 },
+    ],
+    totalOverride: 14.60,
+  },
+  {
+    id: "p4", date: "2026-07-17", store: "Fides Comércio de Alimentos (Vila Leopoldina)", desconto: 0,
+    items: [
+      { name: "Pizza Margherita", qty: 2, unit: "un", unitPrice: 39.90 },
+    ],
+    totalOverride: 79.80,
+  },
+];
+
+// PENDING_IMPORT: Claude adiciona novas compras aqui quando você manda uma nota nova.
+// Ao abrir o app, qualquer item novo aqui é importado automaticamente pro banco (uma vez só, por id).
+const PENDING_IMPORT = [
+  // Claude adiciona novos objetos de compra aqui, no mesmo formato do SEED.
+];
+
+// ===================== SUPABASE DATA LAYER =====================
+function sbHeaders(extra) {
+  return Object.assign({
+    "apikey": SUPABASE_KEY,
+    "Authorization": "Bearer " + SUPABASE_KEY,
+    "Content-Type": "application/json",
+  }, extra || {});
+}
+async function sbGet(path) {
+  const res = await fetch(SUPABASE_URL + "/rest/v1/" + path, { headers: sbHeaders() });
+  if (!res.ok) throw new Error("GET " + path + " -> " + res.status);
+  return res.json();
+}
+async function sbPost(path, body, prefer) {
+  const res = await fetch(SUPABASE_URL + "/rest/v1/" + path, {
+    method: "POST",
+    headers: sbHeaders({ Prefer: prefer || "resolution=merge-duplicates,return=representation" }),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let txt = "";
+    try { txt = await res.text(); } catch (e) {}
+    throw new Error("POST " + path + " -> " + res.status + " " + txt);
+  }
+  return res.json();
+}
+async function sbDelete(path) {
+  const res = await fetch(SUPABASE_URL + "/rest/v1/" + path, { method: "DELETE", headers: sbHeaders() });
+  if (!res.ok) throw new Error("DELETE " + path + " -> " + res.status);
+}
+
+function purchaseToRow(p) {
+  return { id: p.id, date: p.date, store: p.store, desconto: p.desconto || 0, items: p.items, total_override: (p.totalOverride === undefined ? null : p.totalOverride) };
+}
+function rowToPurchase(r) {
+  return { id: r.id, date: r.date, store: r.store, desconto: Number(r.desconto) || 0, items: r.items, totalOverride: r.total_override != null ? Number(r.total_override) : undefined };
+}
+async function fetchPurchases() {
+  const rows = await sbGet("purchases?select=*&order=date.asc");
+  return rows.map(rowToPurchase);
+}
+async function upsertPurchase(p) { await sbPost("purchases", [purchaseToRow(p)]); }
+async function deletePurchaseRow(id) { await sbDelete("purchases?id=eq." + encodeURIComponent(id)); }
+
+async function fetchShoppingList() {
+  const rows = await sbGet("shopping_list?select=*");
+  return rows.map(r => ({ name: r.name, done: !!r.done }));
+}
+async function upsertListItem(name, done) { await sbPost("shopping_list", [{ name: name, done: done }]); }
+async function deleteListItem(name) { await sbDelete("shopping_list?name=eq." + encodeURIComponent(name)); }
+async function clearShoppingListRows() { await sbDelete("shopping_list?name=not.is.null"); }
+
+// ===================== UTILS =====================
+function fmt(n) { return (n || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtDate(d) { const [y, m, day] = d.split("-"); return day + "/" + m + "/" + y; }
+const MONTHS_ABBR = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"];
+function fmtDateShort(d) { const [y, m, day] = d.split("-"); return parseInt(day,10) + " " + MONTHS_ABBR[parseInt(m,10)-1]; }
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function itemsGross(items) { return items.reduce((s, it) => s + it.qty * it.unitPrice, 0); }
+function purchaseTotal(p) {
+  if (typeof p.totalOverride === "number") return p.totalOverride;
+  return Math.max(0, itemsGross(p.items) - (p.desconto || 0));
+}
+function weekKey(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  const day = d.getDay();
+  const sunday = new Date(d);
+  sunday.setDate(d.getDate() - day);
+  return sunday.toISOString().slice(0, 10);
+}
+function weekRangeShort(sundayStr) {
+  const start = new Date(sundayStr + "T00:00:00");
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return fmtDateShort(start.toISOString().slice(0, 10)) + " → " + fmtDateShort(end.toISOString().slice(0, 10));
+}
+function normalize(s) { return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
+
+const CATEGORY_ORDER = ["Hortifruti", "Açougue e Peixaria", "Padaria", "Laticínios e Frios", "Congelados", "Bebidas", "Mercearia", "Limpeza", "Higiene e Perfumaria", "Outros"];
+const CATEGORY_KEYWORDS = {
+  "Hortifruti": ["tomate", "cebola", "batata", "cenoura", "alface", "banana", "maca", "manga", "limao", "mandioquinha", "brocolis", "uva", "mamao", "abacate", "pepino", "pimentao", "couve", "espinafre", "laranja", "melancia", "abacaxi", "chuchu", "alho", "manjericao", "salsa", "cebolinha", "inhame", "beterraba", "morango", "kiwi", "rucula", "agriao", "coentro", "mandioca"],
+  "Açougue e Peixaria": ["carne", "bife", "frango", "patinho", "file de frango", "file de peixe", "peixe", "linguica", "costela", "picanha", "alcatra", "bacon", "salsicha", "hamburguer", "camarao", "salmao", "suino", "lombo", "coxa", "moida", "peito de frango", "tilapia", "acem", "cupim"],
+  "Padaria": ["pao", "baguete", "croissant", "bisnaguinha"],
+  "Laticínios e Frios": ["leite", "queijo", "iogurte", "manteiga", "margarina", "creme de leite", "requeijao", "presunto", "mussarela", "nata", "coalhada", "yopro", "achocolatado"],
+  "Congelados": ["sorvete", "lasanha", "nuggets", "pizza", "congelad"],
+  "Bebidas": ["cerveja", "refrigerante", "coca", "suco", "agua mineral", "vinho", "energetico", "whisky", "vodka", "cachaca", "espumante"],
+  "Mercearia": ["macarrao", "arroz", "feijao", "acucar", "sal ", "oleo", "farinha", "ketchup", "molho", "extrato de tomate", "cereal", "biscoito", "bolacha", "chocolate", "cafe", "mel", "azeite", "vinagre", "granola", "aveia", "fermento", "gelatina", "sucrilhos", "chandelle", "maionese", "mostarda", "tempero"],
+  "Limpeza": ["sacola", "detergente", "sabao em po", "amaciante", "desinfetante", "agua sanitaria", "esponja", "alvejante", "multiuso", "toalha"],
+  "Higiene e Perfumaria": ["papel higienico", "sabonete", "shampoo", "xampu", "creme dental", "escova de dente", "absorvente", "fralda", "desodorante"],
+};
+function classifyItem(name) {
+  const n = normalize(name);
+  for (const cat of CATEGORY_ORDER) {
+    const kws = CATEGORY_KEYWORDS[cat];
+    if (!kws) continue;
+    if (kws.some(k => n.includes(normalize(k)))) return cat;
+  }
+  return "Outros";
+}
+
+// ===================== STATE =====================
+let state = {
+  purchases: null,
+  shoppingList: [],
+  view: "weeks",
+  search: "",
+  expanded: {},
+  loadError: null,
+  listStatus: "idle",
+  listErrorMsg: "",
+};
+
+// ===================== INIT =====================
+async function init() {
+  state.loadError = null;
+  render();
+  try {
+    let purchases = await fetchPurchases();
+    if (purchases.length === 0) {
+      for (const p of SEED) await upsertPurchase(p);
+      purchases = await fetchPurchases();
+    }
+    const existingIds = new Set(purchases.map(p => p.id));
+    const newOnes = PENDING_IMPORT.filter(p => !existingIds.has(p.id));
+    if (newOnes.length) {
+      for (const p of newOnes) await upsertPurchase(p);
+      purchases = await fetchPurchases();
+    }
+    state.purchases = purchases;
+  } catch (e) {
+    console.error(e);
+    state.loadError = e.message;
+    state.purchases = [];
+  }
+  try {
+    state.shoppingList = await fetchShoppingList();
+  } catch (e) {
+    console.error(e);
+  }
+  render();
+}
+
+// ===================== DERIVED DATA =====================
+function getWeeksDesc() {
+  const map = {};
+  for (const p of state.purchases) {
+    const wk = weekKey(p.date);
+    if (!map[wk]) map[wk] = { wk: wk, purchases: [], total: 0 };
+    map[wk].purchases.push(p);
+    map[wk].total += purchaseTotal(p);
+  }
+  return Object.values(map).sort((a, b) => b.wk.localeCompare(a.wk));
+}
+function getWeeksAsc() { return [...getWeeksDesc()].sort((a, b) => a.wk.localeCompare(b.wk)); }
+function catalogNames() {
+  const seen = new Map();
+  for (const p of state.purchases) {
+    for (const it of p.items) {
+      const key = it.name.trim().toLowerCase();
+      if (!seen.has(key)) seen.set(key, it.name.trim());
+    }
+  }
+  return Array.from(seen.values()).sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+function groupNamesByCategory(names) {
+  const map = {};
+  for (const n of names) {
+    const cat = classifyItem(n);
+    if (!map[cat]) map[cat] = [];
+    map[cat].push(n);
+  }
+  return CATEGORY_ORDER.filter(c => map[c] && map[c].length).map(c => ({ category: c, items: map[c] }));
+}
+function groupListByCategory(items) {
+  const map = {};
+  for (const it of items) {
+    const cat = classifyItem(it.name);
+    if (!map[cat]) map[cat] = [];
+    map[cat].push(it);
+  }
+  return CATEGORY_ORDER.filter(c => map[c] && map[c].length).map(c => ({ category: c, items: map[c] }));
+}
+
+function avgPriceForName(name) {
+  const key = name.trim().toLowerCase();
+  let sum = 0, count = 0;
+  for (const p of state.purchases) {
+    for (const it of p.items) {
+      if (it.name.trim().toLowerCase() === key) { sum += it.unitPrice; count++; }
+    }
+  }
+  return count ? sum / count : null;
+}
+function estimatedListTotal() {
+  return state.shoppingList.reduce((s, it) => s + (avgPriceForName(it.name) || 0), 0);
+}
+function countItemsWithoutHistory() {
+  return state.shoppingList.filter(it => avgPriceForName(it.name) == null).length;
+}
+
+// ===================== RENDER =====================
+function renderHeaderStats() {
+  const grand = (state.purchases || []).reduce((s, p) => s + purchaseTotal(p), 0);
+  const weeks = getWeeksDesc();
+  const avg = weeks.length ? weeks.reduce((s, w) => s + w.total, 0) / weeks.length : 0;
+  document.getElementById("stat-total").textContent = "R$ " + fmt(grand);
+  document.getElementById("stat-avg").textContent = "R$ " + fmt(avg);
+}
+
+function render() {
+  document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("tab-active", btn.dataset.view === state.view));
+
+  const app = document.getElementById("app");
+
+  if (state.purchases === null) {
+    app.innerHTML = '<div class="loading">Carregando...</div>';
+    return;
+  }
+
+  renderHeaderStats();
+
+  let html = "";
+  if (state.loadError) {
+    html += '<div class="error-banner">Erro ao carregar dados: ' + escapeHtml(state.loadError) + ' <button data-action="reload">tentar de novo</button></div>';
+  }
+
+  if (state.view === "weeks") html += renderWeeksHtml();
+  else if (state.view === "grafico") html += renderChartHtml();
+  else if (state.view === "precos") html += renderPricesHtml();
+  else if (state.view === "lista") html += renderListHtml();
+
+  app.innerHTML = html;
+}
+
+function renderWeeksHtml() {
+  const weeks = getWeeksDesc();
+  if (weeks.length === 0) return '<div class="empty">Nenhuma compra registrada ainda.</div>';
+  return '<div class="list">' + weeks.map(w =>
+    '<div class="week-card">' +
+      '<div class="week-head"><span class="week-title">' + weekRangeShort(w.wk) + '</span><span class="week-total">R$ ' + fmt(w.total) + '</span></div>' +
+      w.purchases.map(renderPurchaseRow).join("") +
+    '</div>'
+  ).join("") + '</div>';
+}
+
+function renderPurchaseRow(p) {
+  const isOpen = !!state.expanded[p.id];
+  let itemsHtml = "";
+  if (isOpen) {
+    itemsHtml = '<div class="items-table">' +
+      p.items.map(it =>
+        '<div class="ledger-item"><div class="ledger-line">' +
+          '<span class="ledger-label">' + escapeHtml(it.name) + '</span>' +
+          '<span class="ledger-leader"></span>' +
+          '<span class="ledger-value">R$ ' + fmt(it.qty * it.unitPrice) + '</span>' +
+        '</div><div class="ledger-sub">' + it.qty + ' ' + it.unit + ' × R$ ' + fmt(it.unitPrice) + '</div></div>'
+      ).join("") +
+      (p.desconto > 0 ?
+        '<div class="ledger-item"><div class="ledger-line" style="color:var(--stamp)"><span class="ledger-label">Descontos aplicados</span><span class="ledger-leader"></span><span class="ledger-value">− R$ ' + fmt(p.desconto) + '</span></div></div>'
+        : "") +
+      '</div>';
+  }
+  return '<div class="purchase-row">' +
+    '<div class="purchase-head" data-action="toggle-expand" data-id="' + p.id + '">' +
+      '<span class="chevron">' + (isOpen ? "▾" : "▸") + '</span>' +
+      '<span class="purchase-store">' + escapeHtml(p.store) + '</span>' +
+      '<span class="purchase-total">R$ ' + fmt(purchaseTotal(p)) + '</span>' +
+      '<button class="trash-btn" data-action="delete-purchase" data-id="' + p.id + '" title="Remover">✕</button>' +
+    '</div>' +
+    '<div class="purchase-meta">' + fmtDate(p.date) + '</div>' +
+    itemsHtml +
+  '</div>';
+}
+
+function renderChartHtml() {
+  const weeks = getWeeksAsc();
+  if (weeks.length === 0) return '<div class="chart-card"><div class="empty">Nenhum dado ainda.</div></div>';
+  const max = Math.max(...weeks.map(w => w.total), 1);
+  const bars = weeks.map(w =>
+    '<div class="bar-col">' +
+      '<div class="bar-value">R$ ' + fmt(w.total) + '</div>' +
+      '<div class="bar" style="height:' + Math.max(6, (w.total / max) * 160) + 'px"></div>' +
+      '<div class="bar-label">' + fmtDateShort(w.wk) + '</div>' +
+    '</div>'
+  ).join("");
+  return '<div class="chart-card"><div class="chart-title">Gasto total por semana</div><div class="bar-chart">' + bars + '</div></div>';
+}
+
+function renderPricesHtml() {
+  return '<div class="price-card">' +
+    '<div class="search-box"><input id="search-input" type="text" value="' + escapeHtml(state.search) + '" placeholder="Buscar item (ex: tomate, cerveja, café...)" /></div>' +
+    '<div id="price-rows-container">' + renderPriceRowsInner() + '</div>' +
+  '</div>';
+}
+function renderPriceRowsInner() {
+  const q = state.search.trim().toLowerCase();
+  if (!q) return '<div class="empty">Digite o nome de um item para ver o histórico de preço.</div>';
+  let rows = [];
+  for (const p of state.purchases) {
+    for (const it of p.items) {
+      if (it.name.toLowerCase().includes(q)) {
+        rows.push({ date: p.date, store: p.store, name: it.name, qty: it.qty, unit: it.unit, unitPrice: it.unitPrice });
+      }
+    }
+  }
+  rows.sort((a, b) => b.date.localeCompare(a.date));
+  if (rows.length === 0) return '<div class="empty">Nenhum item encontrado.</div>';
+  return '<div style="margin-top:14px">' + rows.map(r =>
+    '<div class="ledger-item"><div class="ledger-line">' +
+      '<span class="ledger-label">' + escapeHtml(r.name) + '</span>' +
+      '<span class="ledger-leader"></span>' +
+      '<span class="ledger-value">R$ ' + fmt(r.unitPrice) + '</span>' +
+    '</div><div class="ledger-sub">' + fmtDate(r.date) + ' · ' + escapeHtml(r.store.split(" ")[0]) + ' · ' + r.qty + ' ' + r.unit + '</div></div>'
+  ).join("") + '</div>';
+}
+
+function saveStatusHtml() {
+  if (state.listStatus === "saving") return '<span class="save-status">salvando…</span>';
+  if (state.listStatus === "saved") return '<span class="save-status" style="color:var(--green)">✓ salvo</span>';
+  if (state.listStatus === "error") return '<span class="save-status" style="color:var(--stamp)">Erro: ' + escapeHtml(state.listErrorMsg) + '<button class="retry-link" data-action="retry-list">tentar de novo</button></span>';
+  return "";
+}
+
+function renderListHtml() {
+  const listNamesSet = new Set(state.shoppingList.map(i => i.name.toLowerCase()));
+  const sortedList = [...state.shoppingList].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  const grouped = groupListByCategory(sortedList);
+  const catalog = catalogNames();
+  const catalogGrouped = groupNamesByCategory(catalog);
+  const pendentes = state.shoppingList.filter(i => !i.done).length;
+  const noHistoryCount = countItemsWithoutHistory();
+
+  return '<div class="price-card">' +
+    '<div class="list-head-row">' +
+      '<div class="list-head-title">Sua lista' + (state.shoppingList.length ? ' · ' + pendentes + ' pendentes' : '') + '</div>' +
+      '<div style="display:flex;align-items:center;gap:10px">' + saveStatusHtml() +
+        (state.shoppingList.length ? '<button class="clear-btn" data-action="clear-list">Limpar</button>' : '') +
+      '</div>' +
+    '</div>' +
+    (state.shoppingList.length > 0 ?
+      '<div class="predicted-total-row"><span class="predicted-total-k">PREVISTO PARA A COMPRA</span><span class="predicted-total-v">R$ ' + fmt(estimatedListTotal()) + '</span></div>' +
+      (noHistoryCount > 0 ? '<div class="predicted-note">' + noHistoryCount + ' ' + (noHistoryCount === 1 ? 'item ainda não tem' : 'itens ainda não têm') + ' histórico de preço e não entram nessa conta.</div>' : '')
+      : '') +
+    (state.shoppingList.length === 0 ?
+      '<div class="empty">Nenhum item selecionado ainda. Marque itens no catálogo abaixo.</div>' :
+      '<div style="margin-bottom:28px">' + grouped.map(g =>
+        '<div class="category-block"><div class="category-title">' + g.category + '</div>' +
+        g.items.map(it => {
+          const avg = avgPriceForName(it.name);
+          return '<label class="list-check-row"><input type="checkbox" data-action="toggle-done" data-name="' + escapeHtml(it.name) + '" ' + (it.done ? "checked" : "") + ' />' +
+          '<span class="ledger-label" style="' + (it.done ? "text-decoration:line-through;color:#b3a98d" : "") + '">' + escapeHtml(it.name) + '</span>' +
+          '<span class="ledger-leader"></span>' +
+          '<span class="list-item-price">' + (avg != null ? "~R$ " + fmt(avg) : "—") + '</span></label>';
+        }).join("") + '</div>'
+      ).join("") + '</div>'
+    ) +
+    '<div style="border-top:1px solid var(--rule);padding-top:18px">' +
+      '<div class="category-title" style="border-bottom:none;margin-bottom:10px">Itens de compras anteriores</div>' +
+      '<div class="catalog-list">' + catalogGrouped.map(g =>
+        '<div class="category-block"><div class="category-title">' + g.category + '</div>' +
+        g.items.map(name => {
+          const avg = avgPriceForName(name);
+          return '<label class="list-check-row"><input type="checkbox" data-action="toggle-catalog" data-name="' + escapeHtml(name) + '" ' + (listNamesSet.has(name.toLowerCase()) ? "checked" : "") + ' />' +
+          '<span class="ledger-label">' + escapeHtml(name) + '</span>' +
+          '<span class="ledger-leader"></span>' +
+          '<span class="list-item-price">' + (avg != null ? "~R$ " + fmt(avg) : "") + '</span></label>';
+        }).join("") + '</div>'
+      ).join("") + '</div>' +
+      '<div class="custom-add-row"><input id="custom-item-input" type="text" placeholder="Item novo (ex: fósforo)" /><button class="add-small-btn" data-action="add-custom">Adicionar</button></div>' +
+    '</div>' +
+  '</div>';
+}
+
+// ===================== ACTIONS =====================
+async function toggleListMembership(name, add) {
+  if (add) {
+    if (!state.shoppingList.some(i => i.name.toLowerCase() === name.toLowerCase())) {
+      state.shoppingList = state.shoppingList.concat([{ name: name, done: false }]);
+    }
+  } else {
+    state.shoppingList = state.shoppingList.filter(i => i.name.toLowerCase() !== name.toLowerCase());
+  }
+  state.listStatus = "saving";
+  render();
+  try {
+    if (add) await upsertListItem(name, false); else await deleteListItem(name);
+    state.listStatus = "saved";
+    render();
+    setTimeout(() => { if (state.listStatus === "saved") { state.listStatus = "idle"; render(); } }, 1200);
+  } catch (e) {
+    state.listStatus = "error"; state.listErrorMsg = e.message; render();
+  }
+}
+async function setItemDone(name, done) {
+  state.shoppingList = state.shoppingList.map(i => i.name === name ? Object.assign({}, i, { done: done }) : i);
+  state.listStatus = "saving";
+  render();
+  try {
+    await upsertListItem(name, done);
+    state.listStatus = "saved";
+    render();
+    setTimeout(() => { if (state.listStatus === "saved") { state.listStatus = "idle"; render(); } }, 1200);
+  } catch (e) {
+    state.listStatus = "error"; state.listErrorMsg = e.message; render();
+  }
+}
+
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => { state.view = btn.dataset.view; render(); });
+});
+
+document.getElementById("app").addEventListener("click", async (e) => {
+  const el = e.target.closest("[data-action]");
+  if (!el) return;
+  const action = el.dataset.action;
+
+  if (action === "toggle-expand") {
+    state.expanded[el.dataset.id] = !state.expanded[el.dataset.id];
+    render();
+  } else if (action === "delete-purchase") {
+    e.stopPropagation();
+    if (!confirm("Remover essa compra?")) return;
+    try {
+      await deletePurchaseRow(el.dataset.id);
+      state.purchases = state.purchases.filter(p => p.id !== el.dataset.id);
+      render();
+    } catch (err) { alert("Erro ao remover: " + err.message); }
+  } else if (action === "clear-list") {
+    if (!confirm("Limpar toda a lista?")) return;
+    state.listStatus = "saving"; render();
+    try {
+      await clearShoppingListRows();
+      state.shoppingList = [];
+      state.listStatus = "saved"; render();
+      setTimeout(() => { if (state.listStatus === "saved") { state.listStatus = "idle"; render(); } }, 1200);
+    } catch (err) { state.listStatus = "error"; state.listErrorMsg = err.message; render(); }
+  } else if (action === "retry-list") {
+    state.listStatus = "saving"; render();
+    try {
+      state.shoppingList = await fetchShoppingList();
+      state.listStatus = "saved"; render();
+    } catch (err) { state.listStatus = "error"; state.listErrorMsg = err.message; render(); }
+  } else if (action === "add-custom") {
+    const input = document.getElementById("custom-item-input");
+    const name = (input.value || "").trim();
+    if (!name) return;
+    input.value = "";
+    await toggleListMembership(name, true);
+  } else if (action === "reload") {
+    state.purchases = null; init();
+  }
+});
+
+document.getElementById("app").addEventListener("change", async (e) => {
+  if (e.target.dataset.action === "toggle-catalog") {
+    await toggleListMembership(e.target.dataset.name, e.target.checked);
+  } else if (e.target.dataset.action === "toggle-done") {
+    await setItemDone(e.target.dataset.name, e.target.checked);
+  }
+});
+
+document.getElementById("app").addEventListener("input", (e) => {
+  if (e.target.id === "search-input") {
+    state.search = e.target.value;
+    const container = document.getElementById("price-rows-container");
+    if (container) container.innerHTML = renderPriceRowsInner();
+  }
+});
+
+init();
+</script>
+</body>
+</html>
