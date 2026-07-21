@@ -262,6 +262,29 @@ const SEED = [
 // Ao abrir o app, qualquer item novo aqui é importado automaticamente pro banco (uma vez só, por id).
 const PENDING_IMPORT = [
   // Claude adiciona novos objetos de compra aqui, no mesmo formato do SEED.
+  {
+    id: "p5", date: "2026-07-20", store: "Na Minha Época (Vila Leopoldina)", desconto: 0,
+    items: [
+      { name: "Tomate Fonte Forte", qty: 1.310, unit: "kg", unitPrice: 20.99 },
+      { name: "Queijo Parmesão Tirolez", qty: 0.078, unit: "kg", unitPrice: 89.90 },
+      { name: "Patinho Bovino Moído", qty: 0.696, unit: "kg", unitPrice: 65.90 },
+      { name: "Baguete", qty: 0.268, unit: "kg", unitPrice: 30.89 },
+      { name: "Sacola Verde", qty: 1, unit: "un", unitPrice: 0.15 },
+    ],
+    totalOverride: 88.81,
+  },
+];
+
+// CORRECTIONS: Claude adiciona aqui quando precisa corrigir uma compra que já existe no banco
+// (mesmo id do que já foi importado). Diferente do PENDING_IMPORT, isso sempre sobrescreve.
+const CORRECTIONS = [
+  {
+    id: "p4", date: "2026-07-17", store: "Na Minha Época (Vila Leopoldina)", desconto: 0,
+    items: [
+      { name: "Pizza Margherita", qty: 2, unit: "un", unitPrice: 39.90 },
+    ],
+    totalOverride: 79.80,
+  },
 ];
 
 // ===================== SUPABASE DATA LAYER =====================
@@ -392,6 +415,11 @@ async function init() {
     const newOnes = PENDING_IMPORT.filter(p => !existingIds.has(p.id));
     if (newOnes.length) {
       for (const p of newOnes) await upsertPurchase(p);
+    }
+    if (CORRECTIONS.length) {
+      for (const p of CORRECTIONS) await upsertPurchase(p);
+    }
+    if (newOnes.length || CORRECTIONS.length) {
       purchases = await fetchPurchases();
     }
     state.purchases = purchases;
